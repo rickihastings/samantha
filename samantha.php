@@ -71,7 +71,7 @@ class bot
 			),
 
 			'dont_know_replies'	=> array(
-				'Sorry {nick}, no idea {key} is',
+				'Sorry {nick}, no idea what {key} is',
 				'{key}? no idea {nick}',
 			),
 
