@@ -28,7 +28,7 @@ class events extends xbot
 	*/
 	public function on_connect( $ircdata )
 	{
-		if ( $ircdata[2] == '396' )
+		if ( $ircdata[2] == '005' )
 			return true;
 		// return true if we've been sent modes n shit
 		

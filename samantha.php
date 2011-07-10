@@ -48,7 +48,7 @@ class bot
 					'real' 			=> 'Samantha',
 
 					'chans' 		=> array(
-						'#lobby' => '',
+						//'#lobby' => '',
 						'#acora'	=> '',
 					),
 					// channels
@@ -283,30 +283,19 @@ class bot
 						$to = $message[3];
 						$chan = $ircdata->target;
 						// set some variables
-					
+
 						$mybuffer = self::$buffer[$chan];
 						$pop = array_pop( $mybuffer );
 						$mybuffer = array_reverse( $mybuffer );
 						// do some SHUFFLING!!
-						
+
 						$mybuffer = array_slice( $mybuffer, $from, $to );
-						//$mybuffer = implode( "\r\n", $mybuffer );
+						$mybuffer = implode( "\r\n", $mybuffer );
 						// get what we need.
-						
-						// create a new cURL resource
-						/*$ch = curl_init();
 
-						// set URL and other appropriate options
-						curl_setopt( $ch, CURLOPT_URL, 'http://bash.org/?add' );
-						curl_setopt( $ch, CURLOPT_POST, 1 );
-						curl_setopt( $ch, CURLOPT_POSTFIELDS, 'newquote='.url );
+						mysql_query( "INSERT INTO `".self::$config['mysql']['table']."` (`quote`,`by`,`date`) VALUES('".$mybuffer."','".$from."','".time()."')" );
+						// INSERT into the database
 
-						// grab URL and pass it to the browser
-						curl_exec( $ch );
-
-						// close cURL resource, and free up system resources
-						curl_close( $ch );*/
-						
 						return false;
 					}
 					// it is..

@@ -15,7 +15,7 @@ class xbot
 	public $mynicks = array();
 	public $chans = array();
 	// declare some variables.
-	
+
 	/*
 	* __construct
 	*
@@ -28,7 +28,7 @@ class xbot
 		$this->timer = new timer();
 		// start our subclasses
 	}
-	
+
 	/*
 	* connect
 	*
@@ -38,13 +38,13 @@ class xbot
 	public function connect( $info )
 	{
 		$this->info = $info;
-		
+
 		foreach ( $this->info['networks'] as $host => $hinfo )
 		{
 			$hinfo = (object) $hinfo;
-			
+
 			$socket = fsockopen( $host, $hinfo->port );
-			
+
 			if ( !$socket )
 			{
 				// cannot connect
@@ -55,33 +55,31 @@ class xbot
 			{
 				$this->sockets[$host] = $socket;
 				$this->mynicks[$hinfo->nick] = $host;
-				
+
 				stream_set_blocking( $socket, 0 );
 				// set this to blocking
-				
+
 				$this->send( $host, 'USER '.$hinfo->ident.' a b :'.$hinfo->real );
 				$this->nick( $host, $hinfo->nick );
 				// send our info
 			}
 		}
 		// loop though our hosts, connecting to em.
-		
+
 		if ( count( $this->sockets ) == 0 )
-		{
 			exit( 'Error: No connections were able to establish.' );
-		}
 		// we've not established any connections, quit.
-		
+
 		sleep( 5 );
 		// might need to sleep
-		
+
 		$this->timer->init();
 		// timer init
-		
+
 		$this->main_loop = true;
 		// open main loop
 	}
-	
+
 	/*
 	* disconnect
 	*
@@ -91,12 +89,10 @@ class xbot
 	public function disconnect()
 	{
 		foreach ( $this->sockets as $host => $socket )
-		{
 			$this->quit( $host );
-		}
 		// loop though our bots quitting them.
 	}
-	
+
 	/*
 	* init
 	*
@@ -107,20 +103,20 @@ class xbot
 	{
 		usleep( 200000 );
 		// lazy bastard just constantly wanted to sleep
-		
+
 		foreach ( $this->info['networks'][$host]['chans'] as $chan => $key )
 		{
 			if ( $key == '' )
 				$this->join( $host, $chan );
 			else
 				$this->join( $host, $chan, $key );
-				
+
 			usleep( 200000 );
 			// and again.. sheezh
 		}
 		// loop though our channels & join them.
 	}
-	
+
 	/*
 	* main
 	*
@@ -135,21 +131,21 @@ class xbot
 		$loop_count = 0;
 		$joined = false;
 		// remember all this.
-		
+
 		while ( $this->main_loop )
 		{
 			$loop_count++;
-			
+
 			foreach ( $this->sockets as $host => $socket )
 			{
 				$this->timer->loop();
-				
+
 				if ( $raw = stream_get_line( $socket, 4093, "\r\n" ) )
 				{
 					$raw = trim( $host.' '.$raw );
 					$this->ircdata = explode( ' ', $raw );
 					// create our $ircdata arr
-					
+
 					if ( $this->events->on_error( $this->ircdata ) )
 					{
 						$this->disconnect();
@@ -162,32 +158,30 @@ class xbot
 						// reopen the main loop
 					}
 					// error? reboot
-					
+
 					if ( $this->events->on_ping( $this->ircdata ) )
-					{
 						$this->pong( $host, str_replace( ':', '', $this->ircdata[2] ) );
-					}
 					// ping pong, ting tong
-					
+
 					if ( $this->events->on_pmsg( $this->ircdata ) )
 					{
 						$from = explode( '!', $this->ircdata[1] );
 						$from = substr( $from[0], 1 );
 						// who is CTCP'ing us?
-						
+
 						if ( strtolower( substr( $this->ircdata[4], 1 ) ) == strtolower( 'TIME' ) )
 						{
 							$this->ctcp( $host, $from, 'TIME', date( 'D M j G:i:s Y', time() ) );
 							continue;
 						}
-						
+
 						if ( strtolower( substr( $this->ircdata[4], 1 ) ) == strtolower( 'PING' ) )
 						{
 							$this->ctcp( $host, $from, 'PING', '0secs' );
 							continue;
 						}
 						// time and ping, are automaticaly replied to
-						
+
 						foreach ( $this->info['ctcp'] as $type => $value )
 						{
 							if ( strtolower( substr( $this->ircdata[4], 1 ) ) == strtolower( ''.$type.'' ) )
@@ -201,16 +195,10 @@ class xbot
 						// note these can be also custom values.
 					}
 					// ctcp reply
-					
+
 					$ircdata_obj = $this->format( $this->ircdata );
 					// format our data
-					
-					if ( $class == '' )
-						call_user_func_array( $function, array( $this, $ircdata_obj ) );
-					else
-						call_user_func_array( array( $class, $function ), array( $this, $ircdata_obj ) );
-					// execute the callback
-					
+
 					if ( $joined === false && ( $this->events->on_connect( $this->ircdata ) ) )
 					{
 						$this->join_chans( $host );
@@ -218,14 +206,20 @@ class xbot
 					}
 				}
 				// reading the data
+
+				if ( $class == '' )
+					call_user_func_array( $function, array( $this, $ircdata_obj ) );
+				else
+					call_user_func_array( array( $class, $function ), array( $this, $ircdata_obj ) );
+				// execute the callback
 			}
 			// foreach through our sockets
-			
+
 			usleep( 30000 );
 			// usleep to keep cpu handling well.
 		}
 	}
-	
+
 	/*
 	* format
 	*
@@ -235,24 +229,24 @@ class xbot
 	public function format( $ircdata )
 	{
 		$ircdata_obj = (object) array();
-		
+
 		$from = explode( '!', $ircdata[1] );
 		$ident = explode( '@', $from[1] );
-		
+
 		$ircdata_obj->raw = implode( ' ', $ircdata );
 		$ircdata_obj->from = $ircdata[0];
 		$ircdata_obj->nick = str_replace( ':', '', $from[0] );
 		$ircdata_obj->ident = $ident[0];
 		$ircdata_obj->host = $ident[1];
 		// these are standard in ircdata objects
-		
+
 		if ( $this->events->on_join( $ircdata ) || $this->events->on_part( $ircdata ) )
 		{
 			$ircdata_obj->type = strtolower( $ircdata[2] );
 			$ircdata_obj->channel = ( $ircdata[3][0] == ':' ) ? substr( $ircdata[3], 1 ) : $ircdata[3];
 			if ( $this->events->on_part( $ircdata ) ) $ircdata_obj->message = substr( $this->get_data_after( $ircdata, 4 ), 1 );
 			// format it into a usable object.
-			
+
 			return $ircdata_obj;
 			// return this object.
 		}
@@ -262,7 +256,7 @@ class xbot
 			$ircdata_obj->type = strtolower( $ircdata[2] );
 			$ircdata_obj->message = substr( $this->get_data_after( $ircdata, 3 ), 1 );
 			// format it into a usable object.
-			
+
 			return $ircdata_obj;
 			// return this object.
 		}
@@ -274,7 +268,7 @@ class xbot
 			$ircdata_obj->channel = ( $ircdata[3][0] == ':' ) ? substr( $ircdata[3], 1 ) : $ircdata[3];
 			$ircdata_obj->message = substr( $this->get_data_after( $ircdata, 5 ), 1 );
 			// format it into a usable object.
-			
+
 			return $ircdata_obj;
 			// return this object.
 		}
@@ -285,7 +279,7 @@ class xbot
 			$ircdata_obj->channel = ( $ircdata[3][0] == ':' ) ? substr( $ircdata[3], 1 ) : $ircdata[3];
 			$ircdata_obj->mode = $this->get_data_after( $ircdata, 4 );
 			// format it into a usable object.
-			
+
 			return $ircdata_obj;
 			// return this object.
 		}
@@ -296,7 +290,7 @@ class xbot
 			$ircdata_obj->target = $ircdata[3];
 			$ircdata_obj->message = substr( $this->get_data_after( $ircdata, 4 ), 1 );
 			// format it into a usable object.
-			
+
 			return $ircdata_obj;
 			// return this object.
 		}
@@ -307,7 +301,7 @@ class xbot
 			$ircdata_obj->host = $ident[1];
 			$ircdata_obj->new = $ircdata[3];
 			// format it into a usable object.
-			
+
 			return $ircdata_obj;
 			// return this object.
 		}
@@ -318,7 +312,7 @@ class xbot
 			$ircdata_obj->channel = ( $ircdata[3][0] == ':' ) ? substr( $ircdata[3], 1 ) : $ircdata[3];
 			$ircdata_obj->topic = substr( $this->get_data_after( $ircdata, 4 ), 1 );
 			// format it into a usable object.
-			
+
 			return $ircdata_obj;
 			// return this object.
 		}
@@ -327,19 +321,19 @@ class xbot
 		{
 			unset( $ircdata_obj->nick, $ircdata_obj->ident, $ircdata_obj->host );
 			// unset the stuff we don't need for numerics.
-			
+
 			$ircdata_obj->type = 'numeric';
 			$ircdata_obj->numeric = $ircdata[2];
 			$ircdata_obj->message = $this->get_data_after( $ircdata, 4 );
 			$ircdata_obj->server = str_replace( ':', '', $ircdata[1] );
 			// this is most likely a numeric
 			// so we parse it a little differently.
-			
+
 			return $ircdata_obj;
 		}
 		// else.
 	}
-	
+
 	/*
 	* format_list
 	*
@@ -353,10 +347,10 @@ class xbot
 			$message = $this->get_data_after( $ircdata, 4 );
 			$list_reply = explode( ' ', $message );
 			// setup our vars
-			
+
 			if ( $list_reply[0] == '*' ) return false;
 			// ignore * don't have a clue what it is..
-			
+
 			$listreply = array(
 				'channel' => $list_reply[0],
 				'users' => $list_reply[1],
@@ -364,12 +358,12 @@ class xbot
 				'topic' => $this->get_data_after( $list_reply, 3 ),
 			);
 			// setup the list reply
-			
+
 			return $listreply;
 			// return it
 		}
 	}
-	
+
 	/*
 	* format_names
 	*
@@ -385,17 +379,17 @@ class xbot
 			$channel_nicks = substr( $this->get_data_after( $names_reply, 2 ), 1 );
 			$channel_nicks = explode( ' ', $channel_nicks );
 			// setup some arrays/vars
-			
+
 			$namesreply = array(
 				'channel' => $names_reply[1],
 				'users' => $channel_nicks,
 			);
-			
+
 			return $namesreply;
 		}
 		// names numeric
 	}
-	
+
 	/*
 	* ctcp
 	*
@@ -424,7 +418,7 @@ class xbot
 		$this->send( $host, 'PRIVMSG '.$target.' :ACTION '.$message.'' );
 		// send ACTION to the server
 	}
-	
+
 	/*
 	* msg
 	*
@@ -438,7 +432,7 @@ class xbot
 		$this->send( $host, 'PRIVMSG '.$target.' :'.$message );
 		// send PRIVMSG to the server
 	}
-	
+
 	/*
 	* notice
 	*
@@ -470,21 +464,21 @@ class xbot
 		else
 		{
 			$this->send( $host, 'TOPIC '.$chan );
-			
+
 			usleep( 10000 );
 			// usleep a tick, so we can wait for the reply
-			
+
 			$socket = $this->sockets[$host];
 			while ( $raw = stream_get_line( $socket, 4093, "\r\n" ) )
 			{
 				$raw = trim( $host.' '.$raw );
 				$ircdata = explode( ' ', $raw );
 				// create our $ircdata arr
-				
+
 				$topic = $this->format( $ircdata );
 				$topic = explode( ' ', $topic->message );
 				// format our data
-				
+
 				return substr( $this->get_data_after( $topic, 1 ), 1 );
 				// return topic reply
 			}
@@ -492,7 +486,7 @@ class xbot
 		}
 		// send TOPIC to the server
 	}
-	
+
 	/*
 	* mode
 	*
@@ -506,7 +500,7 @@ class xbot
 		$this->send( $host, 'MODE '.$chan.' '.$mode );
 		// send MODE to the server
 	}
-	
+
 	/*
 	* kick
 	*
@@ -520,7 +514,7 @@ class xbot
 		$this->send( $host, 'KICK '.$chan.' '.$user );
 		// send KICK to the server
 	}
-	
+
 	/*
 	* invite
 	*
@@ -534,7 +528,7 @@ class xbot
 		$this->send( $host, 'INVITE '.$chan.' '.$user );
 		// send INVITE to the server
 	}
-	
+
 	/*
 	* join
 	*
@@ -551,7 +545,7 @@ class xbot
 			$this->send( $host, 'JOIN '.$chan );
 		// send JOIN to the server
 	}
-	
+
 	/*
 	* part
 	*
@@ -568,7 +562,7 @@ class xbot
 			$this->send( $host, 'PART '.$chan );
 		// send PART to the server
 	}
-	
+
 	/*
 	* nick
 	*
@@ -581,7 +575,7 @@ class xbot
 		$this->send( $host, 'NICK '.$nick );
 		// send NICK to the server
 	}
-	
+
 	/*
 	* quit
 	*
@@ -605,28 +599,28 @@ class xbot
 	{
 		$this->send( $host, 'NAMES '.$chan );
 		// send NAMES to the server
-		
+
 		usleep( 10000 );
 		// usleep a tick, so we can wait for the reply
-		
+
 		$socket = $this->sockets[$host];
 		while ( $raw = stream_get_line( $socket, 4093, "\r\n" ) )
 		{
 			$raw = trim( $host.' '.$raw );
 			$ircdata = explode( ' ', $raw );
 			// create our $ircdata arr
-			
+
 			$reply = $this->format_names( $ircdata );
 			// format our data
-			
+
 			if ( $reply != '' ) $namesreply[] = $reply;
 		}
 		// re-format the latest stuff from the socket
-		
+
 		return $namesreply;
 		// return names reply
 	}
-	
+
 	/*
 	* list
 	*
@@ -637,30 +631,30 @@ class xbot
 	{
 		$this->send( $host, 'LIST' );
 		// send LIST to the server
-		
+
 		usleep( 200000 );
 		// usleep a tick, so we can wait for the reply
 		// seems we have to usleep ages here, because its just not working
 		// fucking GAY!
-		
+
 		$socket = $this->sockets[$host];
 		while ( $raw = stream_get_line( $socket, 4093, "\r\n" ) )
 		{
 			$raw = trim( $host.' '.$raw );
 			$ircdata = explode( ' ', $raw );
 			// create our $ircdata arr
-			
+
 			$reply = $this->format_list( $ircdata );
 			// format our data
-			
+
 			if ( $reply != '' ) $listreply[] = $reply;
 		}
 		// re-format the latest stuff from the socket
-		
+
 		return $listreply;
 		// return list reply
 	}
-	
+
 	/*
 	* pong
 	*
@@ -673,7 +667,7 @@ class xbot
 		$this->send( $host, 'PONG '.$server );
 		// send PING to the server
 	}
-	
+
 	/*
 	* pass
 	*
@@ -686,7 +680,7 @@ class xbot
 		$this->send( $host, 'PASS '.$pass );
 		// send PASS to the server
 	}
-	
+
 	/*
 	* send
 	*
@@ -696,11 +690,11 @@ class xbot
 	public function send( $host, $message )
 	{
 		$socket = $this->sockets[$host];
-		
+
 		fputs( $socket, $message."\r\n", strlen( $message."\r\n" ) );
 		// fputs.
 	}
-	
+
 	/*
 	* get_data_after
 	*
@@ -710,17 +704,15 @@ class xbot
 	public function get_data_after( $ircdata, $number )
 	{
 		$new_ircdata = $ircdata;
-		
+
 		for ( $i = 0; $i < $number; $i++ )
-		{
 			unset( $new_ircdata[$i] );
-		}
 		// the for loop lets us determine where to go, how many to get etc.. so hard to explain
 		// but so easy to understand when your working with it :P
 		// we reset the variable and unset everything that isnt needed
 		// just to make sure we dont fuck something up with $ircdata (fragile x])
 		$new = implode( ' ', $new_ircdata );
-		
+
 		return trim( $new );
 	}
 }
